@@ -1,0 +1,19 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion '25.0.2'
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+    compile 'org.osmdroid:osmdroid-android:5.6.4'
+    compile 'net.sf.trove4j:trove4j:3.0.3'
+    compile 'com.android.support:support-annotations:25.3.1'
+}
