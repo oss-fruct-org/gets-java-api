@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
@@ -21,7 +22,7 @@ import java.util.Map;
 
 public class Category implements Parcelable {
 
-    private static HashMap<String, Bitmap> icons;
+    private static final Map<String, Bitmap> icons = Collections.synchronizedMap(new HashMap<String, Bitmap>());
 	// препятствия
 	public static final String CURB = "curb"; // бордюр
 	public static final String CROSSWALK = "crosswalk"; // пешеходный переход
@@ -45,6 +46,7 @@ public class Category implements Parcelable {
 	private final String url;
 	private final String iconUrl;
 	private final int id;
+    private boolean isActive;
 	private boolean published;
 
 	public Category(String name, String description, String url, String iconUrl, int id, boolean published) {
@@ -53,13 +55,13 @@ public class Category implements Parcelable {
 		this.url = url;
 		this.id = id;
 		this.iconUrl = iconUrl;
-        if (icons == null) {
-            icons = new HashMap<>();
-        }
         if (!icons.containsKey(this.iconUrl)) {
+			Log.v(getClass().getSimpleName(), "Search in icons=" + icons.toString());
+            icons.put(iconUrl, null);
             new RetrieveIconTask().execute(this.iconUrl);
         }
 		this.published = published;
+        this.isActive = true;
 	}
 
     public Category(Cursor cursor, int offset) {
@@ -69,10 +71,10 @@ public class Category implements Parcelable {
 		this.url = cursor.getString(offset + 3);
 		this.iconUrl = cursor.getString(offset + 4);
 		this.published = cursor.getInt(offset + 5) != 0;
-        if (icons == null) {
-            icons = new HashMap<>();
-        }
+        this.isActive = cursor.getInt(offset + 6) != 0;
         if (!icons.containsKey(this.iconUrl)) {
+            Log.v(getClass().getSimpleName(), "Search in icons=" + icons.toString());
+            icons.put(iconUrl, null);
             new RetrieveIconTask().execute(this.iconUrl);
         }
     }
@@ -84,13 +86,21 @@ public class Category implements Parcelable {
 		this.iconUrl = source.readString();
 		this.id = source.readInt();
 		this.published = source.readInt() != 0;
-        if (icons == null) {
-            icons = new HashMap<>();
-        }
+        this.published = source.readInt() != 0;
         if (!icons.containsKey(this.iconUrl)) {
+            Log.v(getClass().getSimpleName(), "Search in icons=" + icons.toString());
+            icons.put(iconUrl, null);
             new RetrieveIconTask().execute(this.iconUrl);
         }
 	}
+
+	public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
+    }
 
 	public String getName() {
 
@@ -189,6 +199,7 @@ public class Category implements Parcelable {
 		dest.writeString(iconUrl);
 		dest.writeInt(id);
 		dest.writeInt(published ? 1 : 0);
+        dest.writeInt(isActive ? 1 : 0);
 	}
 
 	public static final Creator<Category> CREATOR = new Creator<Category>() {
@@ -216,7 +227,7 @@ public class Category implements Parcelable {
                 return myBitmap;
             } catch (IOException e) {
                 // Log exception
-                Log.d(getClass().getSimpleName(), "Error download icon: " + e.getMessage());
+                Log.w(getClass().getSimpleName(), "Error download icon: " + e.getMessage());
                 return null;
             }
         }
@@ -224,8 +235,8 @@ public class Category implements Parcelable {
         @Override
         protected void onPostExecute(Bitmap s) {
             super.onPostExecute(s);
-            Log.d(getClass().getSimpleName(), "Icon downloaded at url = " + iconUrl + " icons.size=" + icons.size());
             icons.put(iconUrl, s);
+            Log.v(getClass().getSimpleName(), "Icon downloaded: " + icons);
         }
     }
 }

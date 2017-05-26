@@ -441,6 +441,10 @@ public class PointsService extends Service implements SharedPreferences.OnShared
 		database.setDisabilityState(disability, isActive);
 	}
 
+	public void setCategoryState(Category category, boolean isActive) {
+		database.setCategoryState(category, isActive);
+	}
+
 	public void commitDisabilityStates() {
 		notifyDataUpdated(false);
 	}

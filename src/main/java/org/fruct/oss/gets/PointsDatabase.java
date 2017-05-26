@@ -11,6 +11,9 @@ import java.io.Closeable;
 import java.util.List;
 
 public class PointsDatabase implements Closeable {
+    /**
+     *  version 10: add Category.active
+     */
 	public static final int VERSION = 9; // Published 8
 	private final Context context;
 	private final Helper helper;
@@ -19,7 +22,7 @@ public class PointsDatabase implements Closeable {
 	private Disability dis;
 	private static final String[] COLUMNS_DISABILITY = { "_id", "name", "active" };
 	private static final String[] COLUMNS_ID = { "_id" };
-	private static final String[] COLUMNS_CATEGORY = { "_id", "name", "description", "url", "iconUrl", "published"};
+	private static final String[] COLUMNS_CATEGORY = { "_id", "name", "description", "url", "iconUrl", "published", "active"};
 	private static final String[] COLUMNS_POINT = { "_id", "name", "description", "url", "lat", "lon", "categoryId", "provider", "uuid", "difficulty" };
 
 	public PointsDatabase(Context context) {
@@ -177,7 +180,7 @@ public class PointsDatabase implements Closeable {
 		return db.rawQuery(
 				"SELECT DISTINCT point._id, point.name, point.description, point.url, " +
 						"point.lat, point.lon, point.provider, point.uuid, point.difficulty, point.private, " +
-						"category._id, category.name, category.description, category.url, category.iconUrl, category.published " +
+						"category._id, category.name, category.description, category.url, category.iconUrl, category.published, category.active " +
 
 						"FROM point INNER JOIN category ON point.categoryId = category._id " +
 						"INNER JOIN disability_category ON disability_category.categoryId = category._id " +
@@ -191,7 +194,7 @@ public class PointsDatabase implements Closeable {
 		return db.rawQuery(
 				"SELECT DISTINCT point._id, point.name, point.description, point.url, " +
 						"point.lat, point.lon, point.provider, point.uuid, point.difficulty, point.private, " +
-						"category._id, category.name, category.description, category.url, category.iconUrl, category.published " +
+						"category._id, category.name, category.description, category.url, category.iconUrl, category.published, category.active " +
 
 						"FROM point INNER JOIN category ON point.categoryId = category._id " +
 						"WHERE point.private != 0;", null);
@@ -200,7 +203,7 @@ public class PointsDatabase implements Closeable {
 	public Cursor loadNotSynchronizedPoints() {
 		return db.rawQuery("SELECT DISTINCT point._id, point.name, point.description, point.url, " +
 				"point.lat, point.lon, point.provider, point.uuid, point.difficulty, point.private, " +
-				"category._id, category.name, category.description, category.url, category.iconUrl, category.published " +
+				"category._id, category.name, category.description, category.url, category.iconUrl, category.published, category.active " +
 
 				"FROM point INNER JOIN category ON point.categoryId = category._id " +
 				"WHERE point.provider=?", toArray(Point.LOCAL_PROVIDER));
@@ -220,7 +223,13 @@ public class PointsDatabase implements Closeable {
 		db.update("disability", cv, "_id=?", toArray(disability.getDbId()));
 	}
 
-	private boolean isCategoryExists(Category category) {
+    public void setCategoryState(Category category, boolean isActive) {
+        ContentValues cv = new ContentValues(1);
+        cv.put("active", isActive);
+        db.update("category", cv, "_id=?", toArray(category.getId()));
+    }
+
+    private boolean isCategoryExists(Category category) {
 		Cursor cursor = db.query("category", COLUMNS_ID, "_id=?", toArray(category.getId()), null, null, null);
 		boolean isExists = cursor.moveToFirst();
 		cursor.close();
@@ -278,7 +287,8 @@ public class PointsDatabase implements Closeable {
 
 
 		public static final String V9_TABLE_POINT = "ALTER TABLE point ADD COLUMN private INTEGER DEFAULT 0;";
-		public static final String V9_TABLE_CATEGORY = "ALTER TABLE category ADD COLUMN published INTEGER DEFAULT 0;";
+		public static final String V9_TABLE_CATEGORY_PUBLISHED = "ALTER TABLE category ADD COLUMN published INTEGER DEFAULT 0;";
+        public static final String V9_TABLE_CATEGORY_ACTIVE = "ALTER TABLE category ADD COLUMN active INTEGER DEFAULT 0;";
 
 		public Helper(Context context) {
 			super(context, "points-db", null, VERSION);
@@ -313,10 +323,12 @@ public class PointsDatabase implements Closeable {
 				db.execSQL("CREATE UNIQUE INDEX point_uuid_index ON point (uuid);");
 
 
-			case 8: // to 9
+			case 8:
 				db.execSQL(V9_TABLE_POINT);
-				db.execSQL(V9_TABLE_CATEGORY);
+				db.execSQL(V9_TABLE_CATEGORY_PUBLISHED);
+                db.execSQL(V9_TABLE_CATEGORY_ACTIVE);
 			}
+			Log.i(getClass().getSimpleName(), "Upgrade database from " + oldVersion + " to " + newVersion);
 		}
 
 		@Override
