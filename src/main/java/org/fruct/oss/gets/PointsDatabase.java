@@ -185,7 +185,7 @@ public class PointsDatabase implements Closeable {
 						"FROM point INNER JOIN category ON point.categoryId = category._id " +
 						"INNER JOIN disability_category ON disability_category.categoryId = category._id " +
 						"INNER JOIN disability ON disability_category.disabilityId = disability._id " +
-						"WHERE disability.active = 1", null);
+						"WHERE disability.active = 1 and category.active=1", null);
 
 		//return db.query("point", COLUMNS_POINT, null, null, null, null, null);
 	}

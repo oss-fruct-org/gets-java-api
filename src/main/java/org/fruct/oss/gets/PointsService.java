@@ -244,7 +244,7 @@ public class PointsService extends Service implements SharedPreferences.OnShared
 		pointsToUpload.close();
 	}
 
-	private void notifyDataUpdated(final boolean isRemoteUpdate) {
+	public void notifyDataUpdated(final boolean isRemoteUpdate) {
 		handler.post(new Runnable() {
 			@Override
 			public void run() {
